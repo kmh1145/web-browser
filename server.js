@@ -49,7 +49,75 @@ const REL_URL_RE = /(src|href|action)=([\"'])(?!https?:|\/proxy|data:|blob:|mail
 const HEAD_RE = /<head([^>]*)>/i;
 
 function rewriteHtml(body, baseUrl) {
-  body = body.replace(HEAD_RE, `<head$1><base href="${baseUrl}/">`);
+  // Inject <base> + JS navigation interceptor
+  const proxyScript = `<script>
+  (function(){
+    var B='${baseUrl}';
+    var P='/proxy?url=';
+    function u(s){return P+encodeURIComponent(new URL(s,B).href)}
+    function ru(s){try{return new URL(s,B).href}catch(e){return s}}
+
+    // Intercept location assignments
+    var origDesc=Object.getOwnPropertyDescriptor(Location.prototype,'href');
+    if(origDesc&&origDesc.set){
+      Object.defineProperty(Location.prototype,'href',{
+        set:function(v){origDesc.set.call(this,u(v))},
+        get:origDesc.get,configurable:true
+      });
+    }
+
+    // Intercept window.location = ...
+    try{
+      var wl=Object.getOwnPropertyDescriptor(window,'location');
+      Object.defineProperty(window,'__proxy_base',{value:B,configurable:true});
+    }catch(e){}
+
+    // Intercept form submissions
+    document.addEventListener('submit',function(e){
+      var f=e.target;
+      if(f&&f.action){
+        try{
+          var orig=f.getAttribute('action')||'';
+          if(orig&&!orig.startsWith('/proxy')&&!orig.startsWith('http')){
+            f.action=u(orig);
+          }
+        }catch(ex){}
+      }
+    },true);
+
+    // Intercept fetch
+    var origFetch=window.fetch;
+    if(origFetch){
+      window.fetch=function(url,opt){
+        if(typeof url==='string'){
+          try{url=u(url)}catch(e){}
+        }
+        return origFetch.call(this,url,opt);
+      };
+    }
+
+    // Intercept XMLHttpRequest
+    var origOpen=XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open=function(m,url){
+      if(typeof url==='string'){
+        try{url=u(url)}catch(e){}
+      }
+      return origOpen.apply(this,arguments);
+    };
+
+    // Intercept window.open
+    var origOpen2=window.open;
+    window.open=function(url){
+      if(typeof url==='string'){
+        try{url=u(url)}catch(e){}
+      }
+      return origOpen2.apply(this,arguments);
+    };
+  })();
+  </script>`;
+
+  body = body.replace(HEAD_RE, `<head$1><base href="${baseUrl}/">${proxyScript}`);
+
   body = body.replace(ABS_URL_RE, (m, attr, q, url) => `${attr}=${q}/proxy?url=${encodeURIComponent(`https://${url}`)}${q}`);
   body = body.replace(PROTO_REL_RE, (m, attr, q, url) => `${attr}=${q}/proxy?url=${encodeURIComponent(`https://${url}`)}${q}`);
   body = body.replace(CSS_URL_RE, (m, q, url) => `url(${q}/proxy?url=${encodeURIComponent(`https://${url}`)}${q})`);

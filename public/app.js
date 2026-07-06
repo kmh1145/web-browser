@@ -227,8 +227,14 @@
     // Load in iframe
     const iframe = $(`#iframe-${tabId}`);
     if (iframe) {
+      iframe.style.display = 'block'; // Show iframe when navigating
       const uaParam = state.settings.customUA || '';
       iframe.src = `/proxy?url=${encodeURIComponent(fullUrl)}${uaParam ? '&ua=' + encodeURIComponent(uaParam) : ''}`;
+
+      // Hide NTP when navigating
+      if (state.activeTabId === tabId) {
+        $('#ntp').style.display = 'none';
+      }
       iframe.onload = () => {
         tab.loading = false;
         // Try to get title
