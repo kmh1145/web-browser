@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebTab Browser</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
+</head>
+<body>
+  <!-- Title Bar -->
+  <div class="titlebar">
+    <div class="titlebar-left">
+      <div class="traffic-light">
+        <span class="dot red"></span>
+        <span class="dot yellow"></span>
+        <span class="dot green"></span>
+      </div>
+    </div>
+    <div class="titlebar-center">
+      <span id="window-title">WebTab Browser</span>
+    </div>
+    <div class="titlebar-right">
+      <button class="tb-btn" id="btn-bookmark-manager" title="书签管理">📑</button>
+      <button class="tb-btn" id="btn-settings" title="设置">⚙️</button>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <div class="tabs-container" id="tabs-container"></div>
+    <button class="tab-add-btn" id="btn-add-tab" title="新建标签页">+</button>
+  </div>
+
+  <!-- Navigation Bar -->
+  <div class="navbar">
+    <div class="nav-buttons">
+      <button class="nav-btn" id="btn-back" title="后退">◀</button>
+      <button class="nav-btn" id="btn-forward" title="前进">▶</button>
+      <button class="nav-btn" id="btn-refresh" title="刷新">↻</button>
+      <button class="nav-btn" id="btn-home" title="主页">🏠</button>
+    </div>
+    <div class="url-bar-wrapper">
+      <div class="url-security" id="url-security" title="连接状态">🔓</div>
+      <input type="text" class="url-bar" id="url-bar" placeholder="输入网址或搜索内容..." autocomplete="off" spellcheck="false">
+      <button class="url-go-btn" id="btn-go" title="前往">→</button>
+    </div>
+    <div class="nav-actions">
+      <button class="nav-btn" id="btn-bookmark" title="收藏此页">☆</button>
+      <button class="nav-btn" id="btn-zoom" title="缩放" id="zoom-display">100%</button>
+      <div class="zoom-controls" id="zoom-controls" style="display:none">
+        <button class="zoom-btn" id="btn-zoom-out">−</button>
+        <span id="zoom-value">100%</span>
+        <button class="zoom-btn" id="btn-zoom-in">+</button>
+        <button class="zoom-btn" id="btn-zoom-reset">↺</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bookmark Bar -->
+  <div class="bookmark-bar" id="bookmark-bar"></div>
+
+  <!-- Main Content Area -->
+  <div class="browser-content" id="browser-content">
+    <!-- New Tab Page -->
+    <div class="ntp" id="ntp">
+      <div class="ntp-logo">
+        <div class="logo-icon">🌐</div>
+        <h1>WebTab Browser</h1>
+        <p class="ntp-subtitle">在标签页中浏览网页</p>
+      </div>
+      <div class="ntp-search">
+        <div class="search-engine-selector" id="ntp-engine-selector">
+          <img id="ntp-engine-icon" src="" alt="">
+          <span id="ntp-engine-name">Google</span>
+          <span class="chevron">▾</span>
+        </div>
+        <input type="text" class="ntp-search-input" id="ntp-search-input" placeholder="搜索或输入网址...">
+        <button class="ntp-search-btn" id="ntp-search-btn">→</button>
+      </div>
+      <div class="ntp-shortcuts" id="ntp-shortcuts"></div>
+      <div class="ntp-tip">
+        <span>💡 提示：直接在地址栏输入网址或搜索关键词</span>
+      </div>
+    </div>
+    <!-- Iframes will be injected here -->
+  </div>
+
+  <!-- Settings Panel -->
+  <div class="settings-overlay" id="settings-overlay" style="display:none">
+    <div class="settings-panel" id="settings-panel">
+      <div class="settings-header">
+        <h2>⚙️ 设置</h2>
+        <button class="settings-close" id="settings-close">✕</button>
+      </div>
+      <div class="settings-body">
+        <!-- Search Engine -->
+        <div class="settings-group">
+          <h3>🔍 默认搜索引擎</h3>
+          <div class="engine-grid" id="engine-grid"></div>
+        </div>
+        <!-- User Agent -->
+        <div class="settings-group">
+          <h3>🖥️ User-Agent</h3>
+          <div class="ua-presets" id="ua-presets"></div>
+          <div class="ua-custom">
+            <label>自定义 UA：</label>
+            <textarea id="ua-custom-input" rows="3" placeholder="留空使用默认 UA"></textarea>
+            <button class="btn-small" id="btn-ua-apply">应用</button>
+          </div>
+        </div>
+        <!-- Zoom -->
+        <div class="settings-group">
+          <h3>🔎 页面缩放</h3>
+          <div class="zoom-slider-row">
+            <input type="range" id="zoom-slider" min="25" max="300" step="5" value="100">
+            <span id="zoom-slider-value">100%</span>
+          </div>
+        </div>
+        <!-- Homepage -->
+        <div class="settings-group">
+          <h3>🏠 主页设置</h3>
+          <input type="text" class="settings-input" id="homepage-input" placeholder="自定义主页网址（留空使用默认新标签页）">
+          <button class="btn-small" id="btn-homepage-apply">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bookmark Manager Panel -->
+  <div class="bm-overlay" id="bm-overlay" style="display:none">
+    <div class="bm-panel" id="bm-panel">
+      <div class="bm-header">
+        <h2>📑 书签管理</h2>
+        <button class="settings-close" id="bm-close">✕</button>
+      </div>
+      <div class="bm-body">
+        <div class="bm-add-row">
+          <input type="text" id="bm-add-title" placeholder="书签名称">
+          <input type="text" id="bm-add-url" placeholder="网址">
+          <button class="btn-small" id="btn-bm-add">添加</button>
+        </div>
+        <div class="bm-list" id="bm-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Engine Dropdown -->
+  <div class="engine-dropdown" id="engine-dropdown" style="display:none">
+    <div class="engine-dropdown-list" id="engine-dropdown-list"></div>
+  </div>
+
+  <!-- Tab Context Menu -->
+  <div class="context-menu" id="tab-context-menu" style="display:none">
+    <div class="context-item" data-action="duplicate">复制标签页</div>
+    <div class="context-item" data-action="pin">固定标签页</div>
+    <div class="context-separator"></div>
+    <div class="context-item" data-action="close">关闭标签页</div>
+    <div class="context-item" data-action="close-others">关闭其他标签页</div>
+    <div class="context-item" data-action="close-right">关闭右侧标签页</div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
