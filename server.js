@@ -42,10 +42,10 @@ function isCacheable(url, contentType) {
 }
 
 // ─── URL rewrite helper ───
-const ABS_URL_RE = /(src|href|action|poster|data)=([\"'])https?:\/\/([^\"']*?)\2/gi;
-const PROTO_REL_RE = /(src|href|action)=([\"'])\/\/([^\"']*?)\2/gi;
+const ABS_URL_RE = /(src|href|action|poster|data|data-src|data-original|data-lazy-src|data-actualsrc)=([\"'])https?:\/\/([^\"']*?)\2/gi;
+const PROTO_REL_RE = /(src|href|action|data-src|data-original)=([\"'])\/\/([^\"']*?)\2/gi;
 const CSS_URL_RE = /url\(([\"']?)https?:\/\/([^)]+?)\1\)/gi;
-const REL_URL_RE = /(src|href|action)=([\"'])(?!https?:|\/proxy|data:|blob:|mailto:|javascript:|#)([^\"']*?)\2/gi;
+const REL_URL_RE = /(src|href|action|data-src|data-original)=([\"'])(?!https?:|\/proxy|data:|blob:|mailto:|javascript:|#)([^\"']*?)\2/gi;
 const HEAD_RE = /<head([^>]*)>/i;
 
 function rewriteHtml(body, baseUrl) {
@@ -113,6 +113,23 @@ function rewriteHtml(body, baseUrl) {
       }
       return origOpen2.apply(this,arguments);
     };
+
+    // Fix lazy-loaded images: convert data-src → src
+    function fixLazyImages(){
+      var imgs=document.querySelectorAll('img[data-src],img[data-original],img[data-lazy-src],img[data-actualsrc]');
+      for(var i=0;i<imgs.length;i++){
+        var img=imgs[i];
+        var ds=img.getAttribute('data-src')||img.getAttribute('data-original')||img.getAttribute('data-lazy-src')||img.getAttribute('data-actualsrc');
+        if(ds&&!img.src.includes(ds.substring(0,30))){
+          img.src=ds;
+        }
+      }
+    }
+    // Run on DOMContentLoaded + periodically for SPA content
+    document.addEventListener('DOMContentLoaded',fixLazyImages);
+    var _obs=new MutationObserver(function(m){fixLazyImages()});
+    _obs.observe(document.documentElement,{childList:true,subtree:true});
+
   })();
   </script>`;
 
@@ -148,16 +165,21 @@ app.get('/proxy', (req, res) => {
   const mod = parsed.protocol === 'https:' ? https : http;
   const agent = parsed.protocol === 'https:' ? httpsAgent : httpAgent;
 
+  // Build headers — set Referer to target origin for CDN compatibility
+  const targetOrigin = `${parsed.protocol}//${parsed.host}`;
+  const proxyHeaders = {
+    'User-Agent': req.query.ua || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Accept': req.headers.accept || '*/*',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Referer': targetOrigin + '/',
+    'Origin': targetOrigin,
+    'Connection': 'keep-alive',
+  };
+
   const proxyReq = mod.get(targetUrl, {
     agent,
-    headers: {
-      'User-Agent': req.query.ua || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-      'Accept': req.headers.accept || '*/*',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Referer': parsed.origin,
-      'Connection': 'keep-alive',
-    },
+    headers: proxyHeaders,
     timeout: 10000,
   }, (proxyRes) => {
     const contentType = (proxyRes.headers['content-type'] || '').toLowerCase();

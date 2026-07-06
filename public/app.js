@@ -50,6 +50,7 @@
       activeUAPreset: '',
       zoom: 100,
       homepage: '',
+      proxyEnabled: true,
     },
     bookmarks: [],
   };
@@ -229,7 +230,19 @@
     if (iframe) {
       iframe.style.display = 'block'; // Show iframe when navigating
       const uaParam = state.settings.customUA || '';
-      iframe.src = `/proxy?url=${encodeURIComponent(fullUrl)}${uaParam ? '&ua=' + encodeURIComponent(uaParam) : ''}`;
+
+      if (state.settings.proxyEnabled) {
+        iframe.src = `/proxy?url=${encodeURIComponent(fullUrl)}${uaParam ? '&ua=' + encodeURIComponent(uaParam) : ''}`;
+        iframe.removeAttribute('data-direct-url');
+        // Restore sandbox for proxy mode
+        iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads';
+      } else {
+        // Direct mode — no proxy, use iframe directly
+        iframe.src = fullUrl;
+        iframe.setAttribute('data-direct-url', 'true');
+        // Permissive sandbox for direct mode — allow everything needed for modern sites
+        iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads allow-modals allow-top-navigation-by-user-activation allow-presentation';
+      }
 
       // Hide NTP when navigating
       if (state.activeTabId === tabId) {
@@ -706,6 +719,32 @@
         dd.style.display = 'none';
       } else {
         showEngineDropdown();
+      }
+    };
+
+    // Proxy toggle
+    function updateProxyButton() {
+      const btn = $('#btn-proxy');
+      if (state.settings.proxyEnabled) {
+        btn.textContent = '🔄';
+        btn.title = '代理模式：已开启（点击切换）';
+        btn.style.color = 'var(--accent)';
+      } else {
+        btn.textContent = '🔗';
+        btn.title = '直连模式：已开启（点击切换）';
+        btn.style.color = 'var(--text-dim)';
+      }
+    }
+    updateProxyButton();
+
+    $('#btn-proxy').onclick = () => {
+      state.settings.proxyEnabled = !state.settings.proxyEnabled;
+      saveState();
+      updateProxyButton();
+      // Reload current tab if it has a URL
+      const tab = getTab(state.activeTabId);
+      if (tab && tab.url) {
+        navigateTo(tab.id, tab.url);
       }
     };
 
