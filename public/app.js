@@ -165,10 +165,10 @@
     const tab = getTab(id);
     if (!tab) return;
 
-    // Hide all iframes, show target
+    // Hide all iframes, show target only if it has a URL
     state.tabs.forEach(t => {
       const iframe = $(`#iframe-${t.id}`);
-      if (iframe) iframe.style.display = t.id === id ? 'block' : 'none';
+      if (iframe) iframe.style.display = (t.id === id && t.url) ? 'block' : 'none';
     });
 
     state.activeTabId = id;
