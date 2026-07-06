@@ -105,14 +105,56 @@ function rewriteHtml(body, baseUrl) {
       return origOpen.apply(this,arguments);
     };
 
-    // Intercept window.open
-    var origOpen2=window.open;
+    // Intercept window.open — load in same frame instead of popup
     window.open=function(url){
       if(typeof url==='string'){
-        try{url=u(url)}catch(e){}
+        try{
+          var resolved=new URL(url,B).href;
+          window.location.href='/proxy?url='+encodeURIComponent(resolved);
+        }catch(e){
+          window.location.href=url;
+        }
       }
-      return origOpen2.apply(this,arguments);
+      return null; // Block popup
     };
+
+    // Intercept target="_blank" links — load in same frame
+    document.addEventListener('click',function(e){
+      var el=e.target;
+      while(el&&el.tagName!=='A')el=el.parentNode;
+      if(el&&el.target==='_blank'){
+        e.preventDefault();
+        e.stopPropagation();
+        var href=el.getAttribute('href');
+        if(href&&href!=='#'){
+          try{
+            var resolved=new URL(href,B).href;
+            window.location.href='/proxy?url='+encodeURIComponent(resolved);
+          }catch(ex){
+            window.location.href=href;
+          }
+        }
+      }
+    },true);
+
+    // Also handle dynamically added target="_blank" links
+    var linkObs=new MutationObserver(function(mutations){
+      for(var i=0;i<mutations.length;i++){
+        var nodes=mutations[i].addedNodes;
+        for(var j=0;j<nodes.length;j++){
+          if(nodes[j].tagName==='A'&&nodes[j].target==='_blank'){
+            nodes[j].target='_self';
+          }
+          if(nodes[j].querySelectorAll){
+            var links=nodes[j].querySelectorAll('a[target="_blank"]');
+            for(var k=0;k<links.length;k++){
+              links[k].target='_self';
+            }
+          }
+        }
+      }
+    });
+    linkObs.observe(document.documentElement,{childList:true,subtree:true});
 
     // Fix lazy-loaded images: convert data-src → src
     function fixLazyImages(){

@@ -130,7 +130,7 @@
     const iframe = document.createElement('iframe');
     iframe.id = `iframe-${id}`;
     iframe.style.display = 'none';
-    iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads';
+    iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-downloads';
     iframe.referrerPolicy = 'no-referrer';
     container.appendChild(iframe);
 
@@ -235,13 +235,13 @@
         iframe.src = `/proxy?url=${encodeURIComponent(fullUrl)}${uaParam ? '&ua=' + encodeURIComponent(uaParam) : ''}`;
         iframe.removeAttribute('data-direct-url');
         // Restore sandbox for proxy mode
-        iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads';
+        iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-downloads';
       } else {
         // Direct mode — no proxy, use iframe directly
         iframe.src = fullUrl;
         iframe.setAttribute('data-direct-url', 'true');
         // Permissive sandbox for direct mode — allow everything needed for modern sites
-        iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads allow-modals allow-top-navigation-by-user-activation allow-presentation';
+        iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-modals allow-presentation';
       }
 
       // Hide NTP when navigating
